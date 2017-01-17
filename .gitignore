@@ -3,3 +3,8 @@
 ################################################################################
 
 /Ardvark/bin
+/Ardvark/obj
+/Ardvark/App.Debug.config
+/Ardvark/App.Release.config
+/packages
+/.vs/Aardvark Solution/v14
