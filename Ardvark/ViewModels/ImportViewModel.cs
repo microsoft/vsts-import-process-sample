@@ -11,6 +11,7 @@ namespace Aardvark.ViewModels
         public ImportResponseViewModel ImportResponseViewModel { get; set; } = null;
         public string Message { get; set; }
         public bool Success { get; set; } = false;
+        public string PromoteJobId { get; set; } = "0";
         public Validationresult[] validationResults { get; set; }
     }
 }

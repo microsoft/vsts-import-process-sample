@@ -135,10 +135,11 @@ namespace Aardvark.Domain
                 {
                     importViewModel.ImportResponseViewModel = result;
                     importViewModel.Success = true;
-                    importViewModel.Message = "Import succeeded for '" + zipPath + "'";                                       
+                    importViewModel.Message = "Import succeeded for '" + zipPath + "'";
+                    importViewModel.PromoteJobId = result.promoteJobId;
                 }
                 else
-                {
+                {                  
                     importViewModel.ImportResponseViewModel = null;
                     importViewModel.Success = false;
                     importViewModel.Message = response.ReasonPhrase;
@@ -181,6 +182,35 @@ namespace Aardvark.Domain
                 }
 
                 return response;
+            }
+        }
+        
+        /// <summary>
+        /// get the promote status of specific promote job id
+        /// </summary>
+        /// <param name="promoteJobId"></param>
+        /// <returns>PromoteStatusViewModel</returns>
+        public PromoteStatusViewModel GetPromoteStatus(string promoteJobId)
+        {
+            PromoteStatusViewModel vm = null;
+
+            using (var client = new HttpClient())
+            {                
+                client.BaseAddress = new Uri(_apiurl);
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", _login);
+
+                HttpResponseMessage response = client.GetAsync("_apis/work/processAdmin/processes/status/" + promoteJobId).Result;
+
+                if (response.IsSuccessStatusCode)
+                {
+                    vm = response.Content.ReadAsAsync<PromoteStatusViewModel>().Result;
+                }
+
+                response.Dispose();
+
+                return vm;
             }
         }
     }

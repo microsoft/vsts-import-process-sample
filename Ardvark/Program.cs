@@ -8,6 +8,7 @@ using System.IO;
 using System.IO.Compression;
 using Aardvark.ViewModels;
 using Aardvark.Domain;
+using System.Threading;
 
 namespace ImportExportProcessExamples
 {
@@ -118,7 +119,7 @@ namespace ImportExportProcessExamples
                     Console.ForegroundColor = ConsoleColor.White;
                     Console.WriteLine("Importing Project");
 
-                    ImportSingle(_source);
+                    var i = ImportSingle(_source);
 
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.WriteLine("Done");
@@ -433,30 +434,15 @@ namespace ImportExportProcessExamples
             else
             {
                 return;
-            }                     
-            
+            }
+
+            var status = 0;
+
             foreach (var item in list)
             {
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.Write("Importing process '" + item.ZipFilePath + "': ");
+                status = ImportSingle(item.ZipFilePath);
 
-                ImportViewModel vm = process.ImportSingleProcessRESTCall(item.ZipFilePath);
-
-                if (!vm.Success)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Error: " + vm.Message);
-
-                    foreach (var result in vm.validationResults)
-                    {
-                        Console.WriteLine("Line " + result.line + " : " + result.description);
-                    }
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("Success");
-                }
+                if (status == 0) break;
             }
 
             process = null;
@@ -511,29 +497,29 @@ namespace ImportExportProcessExamples
             process = null;       
         }
 
-        private static void ImportSingle(string zipFile)
+        private static int ImportSingle(string zipFile)
         {
             if (!File.Exists(zipFile))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Error: Invlaid argument, zip file not found");
-                return;
+                return 0;
             }
 
             Processes process = new Processes(_appConfig);
                        
             Console.ForegroundColor = ConsoleColor.White;
-            Console.Write("Importing process '" + zipFile + "': ");
+            Console.Write("importing process '" + zipFile + "': ");
 
-            ImportViewModel vm = process.ImportSingleProcessRESTCall(zipFile);
+            ImportViewModel importVm = process.ImportSingleProcessRESTCall(zipFile);
 
-            if (!vm.Success)
+            if (!importVm.Success)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Error: " + vm.Message);
+                Console.WriteLine("Error: " + importVm.Message);
                 Console.WriteLine("");
 
-                foreach (var item in vm.validationResults)
+                foreach (var item in importVm.validationResults)
                 {
                     Console.WriteLine("Line " + item.line + " : " + item.description);
                 }
@@ -543,10 +529,46 @@ namespace ImportExportProcessExamples
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("Success");
 
-               
-            }            
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write("checking promote status...");
+
+                PromoteStatusViewModel promoteStatusVm = new PromoteStatusViewModel() { complete = 0 };
+
+                do
+                {
+                    //check the status of the promote job
+                    promoteStatusVm = process.GetPromoteStatus(importVm.PromoteJobId);
+
+                    Console.Write(".");
+
+                    if (promoteStatusVm == null)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Error: promote json package is empty");
+                        break;
+                    }
+
+                    Thread.Sleep(10000);
+                }
+                while (promoteStatusVm.complete == 0);
+
+                Thread.Sleep(10000);
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Success");
+
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write("adding a buffer to promote process (this may take a couple minutes): ");
+
+                Thread.Sleep(120000);
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Success");
+            }
 
             process = null;
+
+            return 1;                      
         }
 
         public static void ShowHelp()
